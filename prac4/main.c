@@ -35,9 +35,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 // TODO: Add values for below variables
-#define NS  128      // Number of samples in LUT
+#define NS  128      // number of samples in LUTs
 #define TIM2CLK 8000000  // STM Clock frequency
-#define F_SIGNAL 1000 // Frequency of output analog signal
+#define F_SIGNAL 50 // Frequency of output analog signal
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,10 +56,9 @@ DMA_HandleTypeDef hdma_tim2_ch1;
 char* sinu = "Sine";
 char* saw = "Sawtooth";
 char* tri = "triangular";
-char* waveType;
+char* waveType; //stores string of types of wave
 uint32_t timeOfLastPress = 0; //for debouncing
-//uint8_t buttonState = GPIO_PIN_RESET; 
-//uint8_t lastButtonState = GPIO_PIN_RESET;
+
 
 uint32_t Sin_LUT[NS] = {511,536,561,586,611,635,659,683,707,729,752,774,795,815,835,854,872,890,906,921,936,949,962,973,983,992,1000,1007,1012,1016,1020,1021,1022,1021,1020,1016,1012,1007,1000,992,983,973,962,949,936,921,906,890,872,854,835,815,795,774,752,729,707,683,659,635,611,586,561,536,511,486,461,436,411,387,363,339,315,293,270,248,227,207,187,168,150,132,116,101,86,73,60,49,39,30,22,15,10,6,2,1,0,1,2,6,10,15,22,30,39,49,60,73,86,101,116,132,150,168,187,207,227,248,270,293,315,339,363,387,411,436,461,486
 };
@@ -71,8 +70,8 @@ uint32_t triangle_LUT[NS] = {0,16,32,48,64,80,96,112,128,144,160,176,192,208,224
 };
 
 // TODO: Equation to calculate TIM2_Ticks
-uint32_t TIM2_Ticks = TIM2CLK / (NS * F_SIGNAL); // How often to write new LUT value
-uint32_t DestAddress = (uint32_t) &(TIM3->CCR3); // Write LUT TO TIM3->CCR3 to modify PWM duty cycle
+uint32_t TIM2_Ticks = TIM2CLK / (NS * F_SIGNAL); // calculates how often it must write a new LUT val
+uint32_t DestAddress = (uint32_t) &(TIM3->CCR3); //  LUT to TIM3...modifies PWM duty cycle
 
 /* USER CODE END PV */
 
@@ -366,51 +365,44 @@ void EXTI0_1_IRQHandler(void)
    if (__HAL_GPIO_EXTI_GET_IT(Button0_Pin) != RESET){
     
   uint32_t currentTime = HAL_GetTick();
-  uint32_t DEBOUNCE_DELAY = 300;
-    // Check if enough time has passed for debouncing
+  uint32_t DEBOUNCE_DELAY = 100;
+    //check if enough time has passed
     if (currentTime - timeOfLastPress >= DEBOUNCE_DELAY) {
-       // GPIO_PinState buttonState = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-
-        // Check if the button state has changed
-        //if (buttonState != lastButtonState) {
-            // Update the last debounced button state
-            //lastButtonState = buttonState;
-
+       
 	// TODO: Disable DMA transfer and abort IT, then start DMA in IT mode with new LUT and re-enable transfer
 	// HINT: Consider using C's "switch" function to handle LUT changes
   // Check if the button is pressed
       //if (buttonState == GPIO_PIN_SET) {
-        // Stop the DMA transfer
+        // Stop DMA transfer
         __HAL_TIM_DISABLE_DMA(&htim2, TIM_DMA_CC1);
         HAL_DMA_Abort_IT(&hdma_tim2_ch1);
-  // Update the waveform type and configure DMA based on the new waveform
+  // change waveform type and recconfigure DMA based current waveform
                 if (strcmp(waveType,sinu)==0) {
                   lcd_command(CLEAR);
                     waveType = saw;
-                    // Configure DMA with the new waveform (sawtooth)
+                    //configure DMA with new wave (sawtooth)
                     HAL_DMA_Start_IT(&hdma_tim2_ch1, (uint32_t)saw_LUT, (uint32_t)&TIM3->CCR3, NS);
                 } else if (strcmp(waveType,saw)==0) {
                   lcd_command(CLEAR);
                     waveType = tri;
-                    // Configure DMA with the new waveform (triangular)
+                    //configure DMA with new wave (triangular)
                     HAL_DMA_Start_IT(&hdma_tim2_ch1, (uint32_t)triangle_LUT, (uint32_t)&TIM3->CCR3, NS);
                 } else {
                   lcd_command(CLEAR);
                     waveType = sinu;
-                    // Configure DMA with the new waveform (sine)
+                    //configure DMA with new wave (sine)
                     HAL_DMA_Start_IT(&hdma_tim2_ch1, (uint32_t)Sin_LUT, (uint32_t)&TIM3->CCR3, NS);
                 }
-                // Write the updated waveform type to the LCD
+                // Write updated waveform type to the LCD
                 delay(3000);
                 lcd_putstring(waveType);
 
-                // Restart the DMA transfer
+                // start DMA transfer again
                 __HAL_TIM_ENABLE_DMA(&htim2, TIM_DMA_CC1);
-      //}
-    //}
+      
     timeOfLastPress=currentTime;
   }
-	HAL_GPIO_EXTI_IRQHandler(Button0_Pin); // Clear interrupt flags
+	HAL_GPIO_EXTI_IRQHandler(Button0_Pin); //clear interrupt flags
 }
 }
 /* USER CODE END 4 */
